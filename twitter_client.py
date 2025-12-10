@@ -1,22 +1,68 @@
 import os
 import json
-import tweepy
+import sys
 from datetime import datetime
+from types import ModuleType
 from dotenv import load_dotenv
+
+# Patch js2py import issue with Python 3.13+
+# Create mock modules to prevent the js2py import error
+mock_js2py = ModuleType('js2py')
+mock_js2py.eval_js = lambda code: ""
+mock_js2py.EvalJs = lambda: None
+sys.modules['js2py'] = mock_js2py
+
+# Also mock the submodules that might be imported
+for submod in ['js2py.base', 'js2py.utils', 'js2py.utils.injector']:
+    sys.modules[submod] = ModuleType(submod)
+
+from twikit import Client
 
 load_dotenv()
 
-BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
+# Twitter credentials from environment
+USERNAME = os.getenv("TWITTER_USERNAME")
+EMAIL = os.getenv("TWITTER_EMAIL")
+PASSWORD = os.getenv("TWITTER_PASSWORD")
+
+COOKIES_FILE = "cookies.json"
+
+# Global client instance
+_client: Client | None = None
 
 
-def get_twitter_client() -> tweepy.Client:
-    """Create and return a Twitter API v2 client."""
-    if not BEARER_TOKEN:
-        raise ValueError("TWITTER_BEARER_TOKEN environment variable is not set")
-    return tweepy.Client(bearer_token=BEARER_TOKEN)
+async def get_client() -> Client:
+    """Get or create an authenticated Twitter client."""
+    global _client
+    
+    if _client is not None:
+        return _client
+    
+    _client = Client('en-US')
+    
+    # Try to load existing cookies first
+    if os.path.exists(COOKIES_FILE):
+        _client.load_cookies(COOKIES_FILE)
+    else:
+        # Login with credentials
+        if not USERNAME or not PASSWORD:
+            raise ValueError(
+                "Twitter credentials not set. Please set TWITTER_USERNAME, "
+                "TWITTER_EMAIL, and TWITTER_PASSWORD environment variables."
+            )
+        # Disable ui_metrics to avoid js2py compatibility issues with Python 3.13
+        await _client.login(
+            auth_info_1=USERNAME,
+            auth_info_2=EMAIL,
+            password=PASSWORD,
+            enable_ui_metrics=False
+        )
+        _client.save_cookies(COOKIES_FILE)
+    
+    return _client
 
 
-def search_top_liked_posts(search_term: str, max_results: int = 10) -> list[dict]:
+async def search_top_liked_posts(search_term: str, max_results: int = 10) -> list[dict]:
     """
     Search for posts containing the search term and return top liked posts.
     
@@ -27,48 +73,24 @@ def search_top_liked_posts(search_term: str, max_results: int = 10) -> list[dict
     Returns:
         List of tweet dictionaries sorted by like count
     """
-    client = get_twitter_client()
+    client = await get_client()
     
-    # Search for recent tweets containing the search term
-    # We fetch more than needed to sort by likes and get top 10
-    response = client.search_recent_tweets(
-        query=f"{search_term} -is:retweet lang:en",
-        max_results=100,  # Fetch more to find most liked
-        tweet_fields=["public_metrics", "created_at", "author_id"],
-        expansions=["author_id"],
-        user_fields=["username", "name"]
-    )
+    # Search for tweets - fetch more to sort by likes
+    tweets_result = await client.search_tweet(search_term, 'Top', count=20)
     
-    if not response.data:
-        return []
-    
-    # Create a mapping of author_id to user info
-    users = {}
-    if response.includes and "users" in response.includes:
-        for user in response.includes["users"]:
-            users[user.id] = {
-                "username": user.username,
-                "name": user.name
-            }
-    
-    # Process tweets and extract relevant info
     tweets = []
-    for tweet in response.data:
-        metrics = tweet.public_metrics
-        author_info = users.get(tweet.author_id, {"username": "unknown", "name": "Unknown"})
-        
+    for tweet in tweets_result:
         tweet_data = {
-            "id": str(tweet.id),
+            "id": tweet.id,
             "text": tweet.text,
-            "author_id": str(tweet.author_id),
-            "author_username": author_info["username"],
-            "author_name": author_info["name"],
-            "created_at": tweet.created_at.isoformat() if tweet.created_at else None,
-            "like_count": metrics["like_count"],
-            "retweet_count": metrics["retweet_count"],
-            "reply_count": metrics["reply_count"],
-            "quote_count": metrics["quote_count"],
-            "url": f"https://twitter.com/{author_info['username']}/status/{tweet.id}"
+            "author_username": tweet.user.screen_name if tweet.user else "unknown",
+            "author_name": tweet.user.name if tweet.user else "Unknown",
+            "created_at": tweet.created_at if tweet.created_at else None,
+            "like_count": tweet.favorite_count or 0,
+            "retweet_count": tweet.retweet_count or 0,
+            "reply_count": tweet.reply_count or 0,
+            "quote_count": tweet.quote_count or 0,
+            "url": f"https://twitter.com/{tweet.user.screen_name}/status/{tweet.id}" if tweet.user else f"https://twitter.com/i/status/{tweet.id}"
         }
         tweets.append(tweet_data)
     

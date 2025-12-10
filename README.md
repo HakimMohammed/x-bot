@@ -1,6 +1,6 @@
 # X (Twitter) Top Posts API
 
-A FastAPI application that searches for the most liked posts on X (Twitter) containing a search term.
+A FastAPI application that searches for the most liked posts on X (Twitter) containing a search term using [twikit](https://github.com/d60/twikit).
 
 ## Features
 
@@ -8,6 +8,7 @@ A FastAPI application that searches for the most liked posts on X (Twitter) cont
 -   Returns the top 10 most liked posts
 -   Saves all search results to a JSON file
 -   Exposes a REST API endpoint that returns the most liked post URL
+-   Uses twikit library for Twitter scraping (no official API key required)
 
 ## Setup
 
@@ -17,21 +18,20 @@ A FastAPI application that searches for the most liked posts on X (Twitter) cont
 pip install -r requirements.txt
 ```
 
-### 2. Configure Twitter API Credentials
+### 2. Configure Twitter Credentials
 
-1. Go to [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard)
-2. Create a project and app if you haven't already
-3. Get your Bearer Token from the "Keys and tokens" section
-4. Create a `.env` file in the project root:
+Create a `.env` file in the project root:
 
 ```bash
 cp .env.example .env
 ```
 
-5. Edit `.env` and add your Bearer Token:
+Edit `.env` and add your Twitter account credentials:
 
 ```
-TWITTER_BEARER_TOKEN=your_actual_bearer_token_here
+TWITTER_USERNAME=your_username
+TWITTER_EMAIL=your_email@example.com
+TWITTER_PASSWORD=your_password
 ```
 
 ### 3. Run the Application
@@ -112,9 +112,9 @@ Each search saves the top 10 results to a JSON file in the `searches/` directory
 
 ## Note
 
-The Twitter API v2 has rate limits. The free tier allows:
+This application uses [twikit](https://github.com/d60/twikit) to interact with Twitter. Some notes:
 
--   10 requests per 15 minutes for tweet search
--   Maximum 100 tweets per request
-
-For higher limits, consider upgrading to a paid tier.
+-   Requires a Twitter account (username, email, password)
+-   Cookies are saved to `cookies.json` after first login to avoid repeated logins
+-   Be mindful of Twitter's rate limits
+-   For account safety, consider using a secondary account

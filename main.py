@@ -57,7 +57,7 @@ async def search(
     """
     try:
         # Search for top liked posts
-        tweets = search_top_liked_posts(q, max_results=10)
+        tweets = await search_top_liked_posts(q, max_results=10)
         
         if not tweets:
             raise HTTPException(
