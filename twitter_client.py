@@ -6,15 +6,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_KEY = os.getenv("TWITTER_API_KEY")
-API_SECRET = os.getenv("TWITTER_API_SECRET")
+BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
 
 
 def get_twitter_client() -> tweepy.Client:
-    """Create and return a Twitter API v2 client using OAuth 2.0 App-Only authentication."""
-    if not API_KEY or not API_SECRET:
-        raise ValueError("TWITTER_API_KEY and TWITTER_API_SECRET environment variables must be set")
-    return tweepy.Client(consumer_key=API_KEY, consumer_secret=API_SECRET)
+    """Create and return a Twitter API v2 client."""
+    if not BEARER_TOKEN:
+        raise ValueError("TWITTER_BEARER_TOKEN environment variable is not set")
+    return tweepy.Client(bearer_token=BEARER_TOKEN)
 
 
 def search_top_liked_posts(search_term: str, max_results: int = 10) -> list[dict]:

@@ -21,18 +21,17 @@ pip install -r requirements.txt
 
 1. Go to [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard)
 2. Create a project and app if you haven't already
-3. Get your API Key and API Secret from the "Keys and tokens" section
+3. Get your Bearer Token from the "Keys and tokens" section
 4. Create a `.env` file in the project root:
 
 ```bash
 cp .env.example .env
 ```
 
-5. Edit `.env` and add your API credentials:
+5. Edit `.env` and add your Bearer Token:
 
 ```
-TWITTER_API_KEY=your_api_key_here
-TWITTER_API_SECRET=your_api_secret_here
+TWITTER_BEARER_TOKEN=your_actual_bearer_token_here
 ```
 
 ### 3. Run the Application
